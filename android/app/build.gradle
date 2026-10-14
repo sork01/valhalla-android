@@ -1,0 +1,18 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'se.gunning.valhalla'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'se.gunning.valhalla'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        // Override with: ./gradlew assembleDebug -PserverUrl=http://192.168.1.10:8080/
+        buildConfigField 'String', 'SERVER_URL', "\"${project.findProperty('serverUrl') ?: 'https://gunning.se/Valhallasc/'}\""
+    }
+    buildFeatures { buildConfig true }
+    buildTypes { release { minifyEnabled false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

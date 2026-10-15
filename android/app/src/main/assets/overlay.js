@@ -1,4 +1,4 @@
-/* Valhalla Android overlay: touch controls + gamepad, injected into the game page by MainActivity.
+/* Valhalla Android overlay: gamepad support (the game's own HUD handles touch), injected into the game page by MainActivity.
    Everything is translated into the keyboard / pointer events (and a little of the public Field/Online API)
    the web client already understands. Gamepad state arrives from native code through window.__vhPad(). */
 (() => {
@@ -79,29 +79,6 @@
   const css = D.createElement('style');
   css.textContent = `
   html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
-  #vh-ui{position:fixed;inset:0;z-index:15;pointer-events:none;display:none;-webkit-tap-highlight-color:transparent;
-    --l:env(safe-area-inset-left,0px);--r:env(safe-area-inset-right,0px);--b:env(safe-area-inset-bottom,0px)}
-  #vh-ui.on{display:block}
-  #vh-ui.off .vh-c{display:none}
-  body.vh-gp #vh-ui .vh-c{display:none}
-  .vh-c,.vh-eye{position:absolute;pointer-events:auto;touch-action:none}
-  .vh-b{display:flex;align-items:center;justify-content:center;border-radius:50%;color:#f4e6b8;font:700 15px/1 system-ui,sans-serif;
-    background:rgba(24,18,38,.55);border:2px solid rgba(224,184,74,.55);box-shadow:0 2px 8px rgba(0,0,0,.5);text-shadow:0 1px 2px #000;transition:transform .05s}
-  .vh-b.p{transform:scale(.9);background:rgba(224,184,74,.55)}
-  .vh-b small{display:block;font-size:10px;font-weight:600;opacity:.8}
-  #vh-stick{left:calc(26px + var(--l));bottom:calc(26px + var(--b));width:150px;height:150px;border-radius:50%;
-    background:rgba(24,18,38,.35);border:2px solid rgba(224,184,74,.45)}
-  #vh-knob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;
-    background:rgba(224,184,74,.55);border:2px solid rgba(255,235,170,.8);pointer-events:none}
-  #vh-atk{right:calc(28px + var(--r));bottom:calc(28px + var(--b));width:96px;height:96px;font-size:18px}
-  #vh-int{right:calc(142px + var(--r));bottom:calc(30px + var(--b));width:58px;height:58px}
-  #vh-dodge{right:calc(132px + var(--r));bottom:calc(98px + var(--b));width:54px;height:54px}
-  #vh-pot{right:calc(40px + var(--r));bottom:calc(136px + var(--b));width:52px;height:52px}
-  #vh-food{right:calc(96px + var(--r));bottom:calc(160px + var(--b));width:46px;height:46px}
-  #vh-mana{right:calc(148px + var(--r));bottom:calc(168px + var(--b));width:46px;height:46px}
-  #vh-side{right:calc(10px + var(--r));top:236px;display:flex;flex-direction:column;gap:8px}
-  #vh-side .vh-b{position:static;width:42px;height:42px;font-size:13px;pointer-events:auto}
-  .vh-eye{right:calc(10px + var(--r));top:186px;width:36px;height:36px;font-size:16px;opacity:.7}
   #vh-cursor{position:fixed;left:0;top:0;z-index:2147483647;width:26px;height:26px;pointer-events:none;display:none;margin:-3px 0 0 -3px;filter:drop-shadow(0 1px 2px #000)}
   #vh-hint{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483647;padding:6px 12px;border-radius:8px;max-width:90vw;text-align:center;
     background:rgba(0,0,0,.75);color:#f4e6b8;font:13px system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .4s}
@@ -113,34 +90,13 @@
   `;
   D.head.appendChild(css);
 
-  const ui = D.createElement('div'); ui.id = 'vh-ui';
-  ui.innerHTML = `
-    <div class="vh-c" id="vh-stick"><div id="vh-knob"></div></div>
-    <div class="vh-c vh-b" id="vh-atk" data-hold="1">Attack</div>
-    <div class="vh-c vh-b" id="vh-int" data-k="f">Talk<small>F</small></div>
-    <div class="vh-c vh-b" id="vh-dodge" data-k="Shift">Step<small>Shift</small></div>
-    <div class="vh-c vh-b" id="vh-pot" data-k="x">HP<small>X</small></div>
-    <div class="vh-c vh-b" id="vh-food" data-k="z">Food<small>Z</small></div>
-    <div class="vh-c vh-b" id="vh-mana" data-k="c">MP<small>C</small></div>
-    <div class="vh-c" id="vh-side">
-      <div class="vh-b" data-k="Escape">Menu</div>
-      <div class="vh-b" data-k="q">Quest</div>
-      <div class="vh-b" data-k="Enter">Chat</div>
-      <div class="vh-b" data-k="h">Ride</div>
-    </div>
-    <div class="vh-eye vh-b" id="vh-eye">◉</div>`;
-  D.body.appendChild(ui);
   const cursorEl = D.createElement('div'); cursorEl.id = 'vh-cursor';
   cursorEl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 2l16 9-7 2 4 8-3 1-4-8-6 5z" fill="#fff" stroke="#000" stroke-width="1.5"/></svg>';
   D.body.appendChild(cursorEl);
   const hint = D.createElement('div'); hint.id = 'vh-hint'; D.body.appendChild(hint);
   function say(t, ms) { hint.textContent = t; hint.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => hint.style.opacity = 0, ms || 5000); }
 
-  // touch controls show only while a character is in the field
-  const sync = () => { const g = $('scene-game'); ui.classList.toggle('on', !!g && !g.hidden); };
-  setInterval(sync, 400); sync();
-  $('vh-eye').addEventListener('pointerdown', e => { e.preventDefault(); ui.classList.toggle('off'); });
-  addEventListener('touchstart', () => { D.body.classList.remove('vh-gp'); cursorEl.style.display = 'none'; }, { passive: true, capture: true });
+  addEventListener('touchstart', () => { cursorEl.style.display = 'none'; }, { passive: true, capture: true });
 
   // skill-slot badges that tell you which controller combo fires each slot
   const BANK = ['LB', 'RB', 'LT'], FACE = ['A', 'B', 'X', 'Y'];
@@ -154,46 +110,20 @@
   const bar = $('skillbar-slots');
   if (bar) { new MutationObserver(badge).observe(bar, { childList: true }); badge(); }
 
-  // ---------- touch: buttons ----------
-  for (const b of ui.querySelectorAll('[data-k],[data-hold]')) {
-    let timer = 0;
-    const key = b.dataset.k || ' ';
-    b.addEventListener('pointerdown', e => {
-      e.preventDefault(); e.stopPropagation(); b.setPointerCapture(e.pointerId); b.classList.add('p');
-      act(key);
-      if (b.dataset.hold) timer = setInterval(() => act(key), 220);   // hold to keep swinging
-    });
-    const end = e => { e.stopPropagation(); b.classList.remove('p'); clearInterval(timer); };
-    b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end);
-  }
-
-  // ---------- touch: joystick (WASD) ----------
-  const stick = $('vh-stick'), knob = $('vh-knob');
-  let sid = null;
+  // ---------- movement (WASD) ----------
   function setDir(x, y) {   // x,y in -1..1
     const t = .35;
     (x > t ? kd : ku)('d'); (x < -t ? kd : ku)('a'); (y > t ? kd : ku)('s'); (y < -t ? kd : ku)('w');
   }
-  function stickMove(e) {
-    const r = stick.getBoundingClientRect(), R = r.width / 2;
-    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
-    const m = Math.hypot(dx, dy), k = m > R ? R / m : 1;
-    dx *= k; dy *= k;
-    knob.style.transform = `translate(${dx}px,${dy}px)`;
-    setDir(dx / R, dy / R);
-  }
-  stick.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); sid = e.pointerId; stick.setPointerCapture(sid); stickMove(e); });
-  stick.addEventListener('pointermove', e => { if (e.pointerId === sid) stickMove(e); });
-  const stickEnd = e => { if (e.pointerId !== sid) return; sid = null; knob.style.transform = ''; setDir(0, 0); };
-  stick.addEventListener('pointerup', stickEnd); stick.addEventListener('pointercancel', stickEnd);
 
   // ---------- menu navigation (controller) ----------
   const FOCUSABLE = 'button,a[href],input,select,textarea,[role="tab"],[tabindex]:not([tabindex="-1"])';
   const vis = e => { if (e.disabled || e.closest('[hidden],[inert]')) return false; const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(e).visibility !== 'hidden'; };
   // The open modal panel, if any (the game's panels all use .pause); otherwise the visible title / login / character scene.
+  // (login/character panels also carry .pause and sit inside hidden scenes, hence the rendered-box check)
   function container() {
     const g = $('scene-game');
-    if (g && !g.hidden) { const ps = [...D.querySelectorAll('.pause')].filter(p => !p.hidden); return ps.at(-1) || null; }
+    if (g && !g.hidden) { const ps = [...D.querySelectorAll('.pause')].filter(p => !p.hidden && p.getClientRects().length); return ps.at(-1) || null; }
     return [...D.querySelectorAll('.scene')].filter(s => !s.hidden).at(-1) || D.body;
   }
   const cands = c => [...c.querySelectorAll(FOCUSABLE)].filter(vis);
@@ -254,7 +184,6 @@
     const moved = Math.hypot(pad.lx, pad.ly) > .3 || Math.hypot(pad.rx, pad.ry) > .3;
     if (moved || (pad.mask & ~prev)) {
       if (!seen) { seen = true; D.body.classList.add('vh-seen'); say('Controller: stick move · A attack · B talk · X next target · Y step · LB / RB / LT + A B X Y = skills 1–12', 7000); }
-      D.body.classList.add('vh-gp');
     }
     if (!seen) { prev = pad.mask; return; }
 

@@ -1,6 +1,6 @@
 # Valhalla Rumble – Android client
 
-Android WebView shell for the [Valhallasc](https://github.com/sork01/Valhallasc-AI) browser game (public server: https://gunning.se/Valhallasc/), with a touch overlay and gamepad support tuned for the AYN Odin 3. Controller input is read from Android events and injected as the keyboard/pointer events the game already handles, so no game or server changes are needed.
+Android WebView shell for the [Valhallasc](https://github.com/sork01/Valhallasc-AI) browser game (public server: https://gunning.se/Valhallasc/), with gamepad support tuned for the AYN Odin 3. Controller input is read from Android events and injected as the keyboard/pointer events the game already handles, so no game or server changes are needed.
 
 Status: builds; not yet verified on a physical Odin 3.
 
@@ -12,9 +12,7 @@ Status: builds; not yet verified on a physical Odin 3.
 Use `-PserverUrl=http://host:port/` to target a local server. Debug builds allow `chrome://inspect` debugging of the WebView.
 
 ## Touch
-Left joystick = walk (WASD). Right: big Attack (hold to keep swinging), Talk (F), Step (Shift, assassin), HP/Food/MP potions.
-Side column: Menu (Esc), Quests, Chat, Ride. Tap the world to move/target as in the browser; the game's own
-skill bar and HUD buttons are tappable. ◉ hides the overlay. Android Back = Esc.
+No overlay: touch uses the game's own HUD (tap to move/target, skill bar, panel buttons). Android Back = Esc.
 
 ## Controller (standard Android gamepad)
 | Input | Action |

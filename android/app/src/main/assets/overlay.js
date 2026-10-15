@@ -83,10 +83,13 @@
   #vh-hint{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483647;padding:6px 12px;border-radius:8px;max-width:90vw;text-align:center;
     background:rgba(0,0,0,.75);color:#f4e6b8;font:13px system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .4s}
   .vh-f{outline:4px solid #5de1ff !important;outline-offset:2px !important;box-shadow:0 0 14px #5de1ff !important}
-  .skill-slot{position:relative}
-  .vh-badge{display:none;position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);z-index:3;padding:1px 5px;border-radius:6px;
-    font:700 10px/1.2 system-ui,sans-serif;color:#10131c;background:#f4e6b8;border:1px solid #000;pointer-events:none;white-space:nowrap}
-  body.vh-seen .vh-badge{display:block}
+  #vh-badges{position:fixed;left:0;top:0;z-index:14;pointer-events:none;display:none}
+  body.vh-seen #vh-badges{display:block}
+  body.vh-seen .hud-hint{display:none}
+  .vh-badge{position:absolute;box-sizing:border-box;padding:2px 0 1px;border-radius:6px;text-align:center;line-height:1;font-family:system-ui,sans-serif;
+    background:rgba(8,10,18,.9);border:1px solid rgba(244,230,184,.65);color:#f4e6b8}
+  .vh-badge b{display:block;font-size:12px;font-weight:700;letter-spacing:.2px}
+  .vh-badge i{display:block;font-style:normal;font-size:18px;font-weight:800;margin-top:1px}
   `;
   D.head.appendChild(css);
 
@@ -98,17 +101,27 @@
 
   addEventListener('touchstart', () => { cursorEl.style.display = 'none'; }, { passive: true, capture: true });
 
-  // skill-slot badges that tell you which controller combo fires each slot
-  const BANK = ['LB', 'RB', 'LT'], FACE = ['A', 'B', 'X', 'Y'];
-  function badge() {
-    const bar = $('skillbar-slots'); if (!bar) return;
-    [...bar.children].forEach((b, i) => {
-      if (b.querySelector('.vh-badge')) return;
-      const t = D.createElement('i'); t.className = 'vh-badge'; t.textContent = BANK[Math.floor(i / 4)] + '+' + FACE[i % 4]; b.appendChild(t);
+  // Combo labels under the skill bar. They live in their own fixed layer (the slot buttons clip their contents)
+  // and are re-aligned to the live slot rects every frame, so a moved or resized HUD keeps them attached.
+  const BANK = ['LB', 'RB', 'LT'], FACE = ['A', 'B', 'X', 'Y'], FACE_COL = { A: '#7ddc6c', B: '#ff6b5e', X: '#6fb3ff', Y: '#ffd24a' };
+  const badgeLayer = D.createElement('div'); badgeLayer.id = 'vh-badges'; D.body.appendChild(badgeLayer);
+  const badges = [];
+  function placeBadges() {
+    const slots = [...($('skillbar-slots')?.children || [])];
+    while (badges.length < slots.length) {
+      const i = badges.length, f = FACE[i % 4], el = D.createElement('div');
+      el.className = 'vh-badge'; el.innerHTML = `<b>${BANK[Math.floor(i / 4)]}</b><i style="color:${FACE_COL[f]}">${f}</i>`;
+      badgeLayer.appendChild(el); badges.push(el);
+    }
+    const g = $('scene-game'), show = g && !g.hidden && !container();
+    badges.forEach((el, i) => {
+      const r = slots[i]?.getBoundingClientRect();
+      if (!show || !r || !r.width) { el.style.display = 'none'; return; }
+      const h = 33;
+      let y = r.bottom + 3; if (y + h > innerHeight) y = r.top - h - 3;   // no room below: put it above
+      el.style.cssText = `display:block;left:${r.left}px;top:${y}px;width:${r.width}px;height:${h}px`;
     });
   }
-  const bar = $('skillbar-slots');
-  if (bar) { new MutationObserver(badge).observe(bar, { childList: true }); badge(); }
 
   // ---------- movement (WASD) ----------
   function setDir(x, y) {   // x,y in -1..1
@@ -186,6 +199,7 @@
       if (!seen) { seen = true; D.body.classList.add('vh-seen'); say('Controller: stick move · A attack · B talk · X next target · Y step · LB / RB / LT + A B X Y = skills 1–12', 7000); }
     }
     if (!seen) { prev = pad.mask; return; }
+    placeBadges();
 
     const g = $('scene-game'), inGame = g && !g.hidden, panel = inGame ? container() : null;
     const inUI = !inGame || !!panel;

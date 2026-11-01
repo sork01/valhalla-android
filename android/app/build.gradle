@@ -11,8 +11,8 @@ android {
         applicationId 'se.gunning.valhalla'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
         // Override with: ./gradlew assembleDebug -PserverUrl=http://192.168.1.10:8080/
         buildConfigField 'String', 'SERVER_URL', "\"${project.findProperty('serverUrl') ?: 'https://gunning.se/Valhallasc/'}\""
     }
@@ -39,7 +39,7 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            outputFileName = "Valhalla.apk"
+            outputFileName = "Valhalla-${variant.versionName}.apk"
         }
     }
 }

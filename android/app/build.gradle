@@ -1,5 +1,9 @@
 plugins { id 'com.android.application' }
 
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) { localPropsFile.withInputStream { localProps.load(it) } }
+
 android {
     namespace 'se.gunning.valhalla'
     compileSdk 34
@@ -13,6 +17,29 @@ android {
         buildConfigField 'String', 'SERVER_URL', "\"${project.findProperty('serverUrl') ?: 'https://gunning.se/Valhallasc/'}\""
     }
     buildFeatures { buildConfig true }
-    buildTypes { release { minifyEnabled false } }
+    signingConfigs {
+        release {
+            // Keystore path/passwords come from local.properties (gitignored), not the repo.
+            if (localProps.getProperty('release.storeFile')) {
+                storeFile file(localProps.getProperty('release.storeFile'))
+                storePassword localProps.getProperty('release.storePassword')
+                keyAlias localProps.getProperty('release.keyAlias')
+                keyPassword localProps.getProperty('release.keyPassword')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (localProps.getProperty('release.storeFile')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "Valhalla.apk"
+        }
+    }
 }

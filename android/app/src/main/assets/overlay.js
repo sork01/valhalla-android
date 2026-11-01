@@ -51,6 +51,12 @@
     const i = list.indexOf(window.Field.hero.target);
     selectEnemy(list[(i + 1) % list.length]);
   }
+  // Auto-attack only the monster being fought: stop as soon as the target is dead/cleared (never pick a new one).
+  function autoAttack() {
+    const F = window.Field, t = F?.hero?.target;
+    if (!F?.canAct || !t || t.dead) { clearInterval(atkTimer); return; }
+    tap(' ');
+  }
   function act(key) { if (ACTION_KEYS.has(key)) ensureTarget(); tap(key); }
 
   // ---------- pointer synthesis (controller cursor) ----------
@@ -104,13 +110,18 @@
   // Combo labels under the skill bar. They live in their own fixed layer (the slot buttons clip their contents)
   // and are re-aligned to the live slot rects every frame, so a moved or resized HUD keeps them attached.
   const BANK = ['LB', 'RB', 'LT'], FACE = ['A', 'B', 'X', 'Y'], FACE_COL = { A: '#7ddc6c', B: '#ff6b5e', X: '#6fb3ff', Y: '#ffd24a' };
+  // Key each of the 12 skill-bar slots sends, and the bank+face combo that sends it: swapped below
+  // so the 4th skill is LT+A (the 9th, which used to own that combo, moves to LB+Y instead).
+  const SLOT_KEY = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+  const COMBO_KEY = [...SLOT_KEY];
+  [COMBO_KEY[3], COMBO_KEY[8]] = [COMBO_KEY[8], COMBO_KEY[3]];
   const badgeLayer = D.createElement('div'); badgeLayer.id = 'vh-badges'; D.body.appendChild(badgeLayer);
   const badges = [];
   function placeBadges() {
     const slots = [...($('skillbar-slots')?.children || [])];
     while (badges.length < slots.length) {
-      const i = badges.length, f = FACE[i % 4], el = D.createElement('div');
-      el.className = 'vh-badge'; el.innerHTML = `<b>${BANK[Math.floor(i / 4)]}</b><i style="color:${FACE_COL[f]}">${f}</i>`;
+      const i = badges.length, k = COMBO_KEY.indexOf(SLOT_KEY[i]), f = FACE[k % 4], el = D.createElement('div');
+      el.className = 'vh-badge'; el.innerHTML = `<b>${BANK[Math.floor(k / 4)]}</b><i style="color:${FACE_COL[f]}">${f}</i>`;
       badgeLayer.appendChild(el); badges.push(el);
     }
     const g = $('scene-game'), show = g && !g.hidden && !container();
@@ -237,17 +248,16 @@
 
     // ----- field -----
     setDir(dz(pad.lx), dz(pad.ly));
-    const mod = B(4) ? 0 : B(5) ? 4 : B(6) ? 8 : -1;                    // LB: slots 1-4, RB: 5-8, LT: 9-12
-    const SLOT = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+    const mod = B(4) ? 0 : B(5) ? 4 : B(6) ? 8 : -1;                    // LB: slots 1-4, RB: 5-8, LT: 9-12 (4th <-> 9th swapped, see COMBO_KEY)
     for (let i = 0; i < 4; i++) {
       if (!edge(i)) continue;
-      if (mod >= 0) { act(SLOT[mod + i]); continue; }
-      if (i === 0) { act(' '); clearInterval(atkTimer); atkTimer = setInterval(() => act(' '), 220); }
+      if (mod >= 0) { act(COMBO_KEY[mod + i]); continue; }
+      if (i === 0) { act(' '); clearInterval(atkTimer); atkTimer = setInterval(autoAttack, 220); }
       else if (i === 1) tap('f');                                       // B  talk / interact
       else if (i === 2) targetNext();                                   // X  next target
       else if (i === 3) act('Shift');                                   // Y  step (assassin)
     }
-    if (rel(0)) clearInterval(atkTimer);
+    // A keeps auto-attacking the current target; autoAttack() stops by itself once that target is gone.
     if (B(4) && B(5) && (edge(4) || edge(5))) tap('q');                 // LB+RB  quests
     if (edge(12)) tap('x');                                             // d-pad up    health potion
     if (edge(14)) tap('z');                                             // d-pad left  food

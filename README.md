@@ -1,6 +1,6 @@
 # Valhalla Rumble – Android client
 
-Android WebView shell for the [Valhallasc](https://github.com/sork01/Valhallasc-AI) browser game (public server: https://gunning.se/Valhallasc/), with gamepad support tuned for the AYN Odin 3. Controller input is read from Android events and injected as the keyboard/pointer events the game already handles, so no game or server changes are needed.
+Android WebView shell for the [Valhallasc](https://github.com/sork01/Valhallasc-AI) browser game (public server: https://gunning.se/Valhalla/), with gamepad support tuned for the AYN Odin 3. Controller input is read from Android events and injected as the keyboard/pointer events the game already handles, so no game or server changes are needed.
 
 Status: builds; not yet verified on a physical Odin 3.
 

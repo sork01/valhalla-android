@@ -117,7 +117,15 @@
   [COMBO_KEY[3], COMBO_KEY[8]] = [COMBO_KEY[8], COMBO_KEY[3]];
   const badgeLayer = D.createElement('div'); badgeLayer.id = 'vh-badges'; D.body.appendChild(badgeLayer);
   const badges = [];
-  function placeBadges() {
+  // Layout reads (getBoundingClientRect / getClientRects) force a synchronous layout, and rewriting styles dirties it again,
+  // so doing this every frame starves the game's own rendering in the WebView. Poll at ~7 Hz and only write on change.
+  let panelAt = -1e9, panelCache = null, badgeAt = -1e9;
+  function currentPanel(t) {
+    if (t - panelAt >= 140) { panelAt = t; const g = $('scene-game'); panelCache = g && !g.hidden ? container() : null; }
+    return panelCache;
+  }
+  function placeBadges(t) {
+    if (t - badgeAt < 140) return; badgeAt = t;
     const slots = [...($('skillbar-slots')?.children || [])];
     while (badges.length < slots.length) {
       const i = badges.length, k = COMBO_KEY.indexOf(SLOT_KEY[i]), f = FACE[k % 4], el = D.createElement('div');
@@ -126,11 +134,14 @@
     }
     const g = $('scene-game'), show = g && !g.hidden && !container();
     badges.forEach((el, i) => {
-      const r = slots[i]?.getBoundingClientRect();
-      if (!show || !r || !r.width) { el.style.display = 'none'; return; }
-      const h = 33;
-      let y = r.bottom + 3; if (y + h > innerHeight) y = r.top - h - 3;   // no room below: put it above
-      el.style.cssText = `display:block;left:${r.left}px;top:${y}px;width:${r.width}px;height:${h}px`;
+      const r = show ? slots[i]?.getBoundingClientRect() : null;
+      let css = 'display:none';
+      if (r && r.width) {
+        const h = 33;
+        let y = r.bottom + 3; if (y + h > innerHeight) y = r.top - h - 3;   // no room below: put it above
+        css = `display:block;left:${r.left}px;top:${y}px;width:${r.width}px;height:${h}px`;
+      }
+      if (el._css !== css) { el._css = css; el.style.cssText = css; }
     });
   }
 
@@ -210,9 +221,9 @@
       if (!seen) { seen = true; D.body.classList.add('vh-seen'); say('Controller: stick move · A attack · B talk · X next target · Y step · LB / RB / LT + A B X Y = skills 1–12', 7000); }
     }
     if (!seen) { prev = pad.mask; return; }
-    placeBadges();
+    placeBadges(t);
 
-    const g = $('scene-game'), inGame = g && !g.hidden, panel = inGame ? container() : null;
+    const g = $('scene-game'), inGame = g && !g.hidden, panel = inGame ? currentPanel(t) : null;
     const inUI = !inGame || !!panel;
     if (inUI !== uiMode) {                    // entering / leaving a menu: drop movement and held attack
       uiMode = inUI; setDir(0, 0); clearInterval(atkTimer);

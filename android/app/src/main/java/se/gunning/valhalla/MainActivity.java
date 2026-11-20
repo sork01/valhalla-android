@@ -46,7 +46,6 @@ public class MainActivity extends Activity {
         web.setBackgroundColor(Color.BLACK);
         web.setLayoutParams(new ViewGroup.LayoutParams(-1, -1));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         setContentView(web);
         highRefresh();
 

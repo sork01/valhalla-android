@@ -84,6 +84,15 @@
   // ---------- UI ----------
   const css = D.createElement('style');
   css.textContent = `
+  #touch-stick,.touch-attack,.touch-skill{display:none !important}
+  /* Skill bar: always visible as one row of 12 (the game's touch layout hides it behind a tray and wraps it into 2 rows of 6).
+     Sizes are in real px: the game scales its HUD by --ui. Friends/bags buttons stack in the bottom-right corner. */
+  #touch-quickuse>button,#skills-open{display:none !important}
+  #skillbar{display:flex !important;left:345px !important;bottom:calc(22px / var(--ui,.8)) !important;transform:none !important;max-width:none !important;max-height:none !important;overflow:visible !important;padding:3px !important;gap:0 !important}
+  #skillbar-slots{display:flex !important;gap:2px !important}
+  #skillbar .skill-slot{width:calc(36px / var(--ui,.8)) !important;min-width:0 !important;height:calc(40px / var(--ui,.8)) !important;min-height:0 !important}
+  #inventory-open{right:8px !important}
+  #social-open{right:8px !important;bottom:56px !important}
   html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
   #vh-cursor{position:fixed;left:0;top:0;z-index:2147483647;width:26px;height:26px;pointer-events:none;display:none;margin:-3px 0 0 -3px;filter:drop-shadow(0 1px 2px #000)}
   #vh-hint{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483647;padding:6px 12px;border-radius:8px;max-width:90vw;text-align:center;
@@ -92,10 +101,10 @@
   #vh-badges{position:fixed;left:0;top:0;z-index:14;pointer-events:none;display:none}
   body.vh-seen #vh-badges{display:block}
   body.vh-seen .hud-hint{display:none}
-  .vh-badge{position:absolute;box-sizing:border-box;padding:2px 0 1px;border-radius:6px;text-align:center;line-height:1;font-family:system-ui,sans-serif;
+  .vh-badge{position:absolute;box-sizing:border-box;padding:2px 0;border-radius:5px;text-align:center;line-height:1;font-family:system-ui,sans-serif;
     background:rgba(8,10,18,.9);border:1px solid rgba(244,230,184,.65);color:#f4e6b8}
-  .vh-badge b{display:block;font-size:12px;font-weight:700;letter-spacing:.2px}
-  .vh-badge i{display:block;font-style:normal;font-size:18px;font-weight:800;margin-top:1px}
+  .vh-badge{white-space:nowrap;font-size:10px;font-weight:700}
+  .vh-badge i{font-style:normal;font-weight:800}
   `;
   D.head.appendChild(css);
 
@@ -129,7 +138,7 @@
     const slots = [...($('skillbar-slots')?.children || [])];
     while (badges.length < slots.length) {
       const i = badges.length, k = COMBO_KEY.indexOf(SLOT_KEY[i]), f = FACE[k % 4], el = D.createElement('div');
-      el.className = 'vh-badge'; el.innerHTML = `<b>${BANK[Math.floor(k / 4)]}</b><i style="color:${FACE_COL[f]}">${f}</i>`;
+      el.className = 'vh-badge'; el.innerHTML = `${BANK[Math.floor(k / 4)]}+<i style="color:${FACE_COL[f]}">${f}</i>`;
       badgeLayer.appendChild(el); badges.push(el);
     }
     const g = $('scene-game'), show = g && !g.hidden && !container();
@@ -137,7 +146,7 @@
       const r = show ? slots[i]?.getBoundingClientRect() : null;
       let css = 'display:none';
       if (r && r.width) {
-        const h = 33;
+        const h = 15;
         let y = r.bottom + 3; if (y + h > innerHeight) y = r.top - h - 3;   // no room below: put it above
         css = `display:block;left:${r.left}px;top:${y}px;width:${r.width}px;height:${h}px`;
       }
@@ -208,7 +217,7 @@
   // Bit i of the mask: 0 A 1 B 2 X 3 Y 4 LB 5 RB 6 LT 7 RT 8 Select 9 Start 10 L3 11 R3 12 Up 13 Down 14 Left 15 Right
   const pad = { mask: 0, lx: 0, ly: 0, rx: 0, ry: 0 };
   window.__vhPad = (mask, lx, ly, rx, ry) => { pad.mask = mask; pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry; };
-  let prev = 0, atkTimer = 0, seen = false, lastT = performance.now(), uiMode = false, navDir = '', navAt = 0;
+  let prev = 0, atkTimer = 0, seen = true, lastT = performance.now(), uiMode = false, navDir = '', navAt = 0;
   const dz = v => Math.abs(v) < .25 ? 0 : v;
   const B = i => (pad.mask >> i) & 1;
 
@@ -216,11 +225,6 @@
     requestAnimationFrame(loop);
     const dt = Math.min(.05, (t - lastT) / 1000); lastT = t;
     const edge = i => B(i) && !((prev >> i) & 1), rel = i => !B(i) && ((prev >> i) & 1);
-    const moved = Math.hypot(pad.lx, pad.ly) > .3 || Math.hypot(pad.rx, pad.ry) > .3;
-    if (moved || (pad.mask & ~prev)) {
-      if (!seen) { seen = true; D.body.classList.add('vh-seen'); say('Controller: stick move · A attack · B talk · X next target · Y step · LB / RB / LT + A B X Y = skills 1–12', 7000); }
-    }
-    if (!seen) { prev = pad.mask; return; }
     placeBadges(t);
 
     const g = $('scene-game'), inGame = g && !g.hidden, panel = inGame ? currentPanel(t) : null;
@@ -280,6 +284,9 @@
     if (edge(11)) tap('e');                                             // R3 character + bags
     prev = pad.mask;
   }
+  // Built for the Odin 3's own gamepad: controller mode is always on (labels + hint from launch, no touch stick / attack button).
+  D.body.classList.add('vh-seen');
+  say('A attack · B talk · X next target · Y step · LB / RB / LT + A B X Y = skills 1–12', 7000);
   requestAnimationFrame(loop);
 
   // ---------- Android back button ----------

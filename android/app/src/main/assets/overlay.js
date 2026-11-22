@@ -12,6 +12,10 @@
     Element.prototype[m] = function (id) { try { return o.call(this, id); } catch (e) { } };
   }
 
+  // The game suggests "Low graphics" on touch devices; it renders at ~0.5x there and the 8x8-tile ground chunks show seams while moving.
+  // The Odin 3 has plenty of headroom, so keep it off and never offer it.
+  try { const P = window.Prefs; if (P && (P.lowGraphics || !P.touchGraphicsSuggested)) P.set({ lowGraphics: false, touchGraphicsSuggested: true }); } catch (e) { }
+
   // ---------- keyboard synthesis ----------
   const CODE = { ' ': 'Space', Escape: 'Escape', Enter: 'Enter', Shift: 'ShiftLeft', '-': 'Minus', '=': 'Equal' };
   const down = new Set();

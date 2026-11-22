@@ -11,8 +11,8 @@ android {
         applicationId 'se.gunning.valhalla'
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName '1.0.0'
+        versionCode 4
+        versionName '1.0.1'
         // Override with: ./gradlew assembleDebug -PserverUrl=http://192.168.1.10:8080/
         buildConfigField 'String', 'SERVER_URL', "\"${project.findProperty('serverUrl') ?: 'https://gunning.se/Valhalla/'}\""
     }
